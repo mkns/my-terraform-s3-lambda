@@ -17,6 +17,7 @@ provider "aws" {
   region = var.aws_region
 }
 
+// set up the s3 bucket which will hold the lambda
 resource "aws_s3_bucket" "lambda_bucket" {
     bucket = "mkns-20211204-terraform-s3-lambda"
 
@@ -24,13 +25,7 @@ resource "aws_s3_bucket" "lambda_bucket" {
   force_destroy = true
 }
 
-resource "aws_s3_bucket" "input_bucket" {
-    bucket = "mkns-20211204-terraform-s3-lambda-input"
-
-  acl           = "private"
-  force_destroy = true
-}
-
+// put the lambda in a zip file and put it in the s3 bucket
 data "archive_file" "lambda_script" {
   type = "zip"
 
@@ -47,6 +42,7 @@ resource "aws_s3_bucket_object" "lambda_script" {
   etag = filemd5(data.archive_file.lambda_script.output_path)
 }
 
+// define the lambda resource
 resource "aws_lambda_function" "script" {
   function_name = "mkns20211204_trigger"
 
@@ -61,12 +57,14 @@ resource "aws_lambda_function" "script" {
   role = aws_iam_role.lambda_exec.arn
 }
 
+// logging
 resource "aws_cloudwatch_log_group" "script" {
   name = "/aws/lambda/${aws_lambda_function.script.function_name}"
 
   retention_in_days = 30
 }
 
+// set up a Role which will run the lambda
 resource "aws_iam_role" "lambda_exec" {
   name = "serverless_lambda"
 
@@ -84,6 +82,7 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
+// this lambda needs 2 separate Policies, just using standard AWS-defined ones
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
     role       = aws_iam_role.lambda_exec.name
     policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -94,6 +93,15 @@ resource "aws_iam_role_policy_attachment" "s3_readonly" {
     policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 }
 
+// create another s3 bucket, this time for our input files to be dropped in
+resource "aws_s3_bucket" "input_bucket" {
+    bucket = "mkns-20211204-terraform-s3-lambda-input"
+
+  acl           = "private"
+  force_destroy = true
+}
+
+// set up the notification stuff so when something drops in the input s3 bucket, the lambda is triggered
 resource "aws_lambda_permission" "allow_bucket" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
@@ -111,4 +119,12 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
     filter_prefix       = ""
     filter_suffix       = ".json"
   }
+}
+
+// set up another s3 bucket, this time for output
+resource "aws_s3_bucket" "output_bucket" {
+    bucket = "mkns-20211204-terraform-s3-lambda-output"
+
+  acl           = "public-read"
+  force_destroy = true
 }
