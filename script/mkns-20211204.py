@@ -1,6 +1,7 @@
 import json
 import urllib.parse
 import boto3
+import os
 
 print('Loading function')
 
@@ -20,6 +21,11 @@ def lambda_handler(event, context):
         j = json.loads(inputString)
         print("BODY: " + inputString)
         print("NAME: " + j["name"])
+
+        output = json.dumps({ "greeting": "I would like to say hello to " + j["name"] })
+        output_filename = os.path.splitext(key)[0] + "-output.json"
+        s3.put_object(Body=output, Bucket='mkns-20211204-terraform-s3-lambda-output', Key=output_filename, ACL='public-read')
+
         return response['ContentType']
     except Exception as e:
         print(e)

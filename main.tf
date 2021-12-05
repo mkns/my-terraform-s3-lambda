@@ -90,7 +90,7 @@ resource "aws_iam_role_policy_attachment" "lambda_policy" {
 
 resource "aws_iam_role_policy_attachment" "s3_readonly" {
     role       = aws_iam_role.lambda_exec.name
-    policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+    policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
 // create another s3 bucket, this time for our input files to be dropped in
@@ -123,8 +123,7 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 
 // set up another s3 bucket, this time for output
 resource "aws_s3_bucket" "output_bucket" {
-    bucket = "mkns-20211204-terraform-s3-lambda-output"
-
+  bucket        = "mkns-20211204-terraform-s3-lambda-output"
   acl           = "public-read"
   force_destroy = true
 }
